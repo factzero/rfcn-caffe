@@ -24,12 +24,15 @@ import scipy.io as sio
 import caffe, os, sys, cv2
 import argparse
 
-CLASSES = ('__background__',
-           'aeroplane', 'bicycle', 'bird', 'boat',
+CLASSES00 = ('__background__',
+           'aeroplane', 'bicycle', 'bird', 'boat', 
            'bottle', 'bus', 'car', 'cat', 'chair',
            'cow', 'diningtable', 'dog', 'horse',
            'motorbike', 'person', 'pottedplant',
            'sheep', 'sofa', 'train', 'tvmonitor')
+
+CLASSES = ('__background__',
+           'face')
 
 NETS = {'ResNet-101': ('ResNet-101',
                   'resnet101_rfcn_final.caffemodel'),
