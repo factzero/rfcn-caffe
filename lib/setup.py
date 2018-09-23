@@ -55,7 +55,7 @@ def locate_cuda():
             raise EnvironmentError('The CUDA %s path could not be located in %s' % (k, v))
 
     return cudaconfig
-CUDA = locate_cuda()
+# CUDA = locate_cuda()
 
 
 # Obtain the numpy include directory.  This logic works across numpy versions.
@@ -75,31 +75,34 @@ def customize_compiler_for_nvcc(self):
     subclassing going on."""
 
     # tell the compiler it can processes .cu
-    self.src_extensions.append('.cu')
+    # self.src_extensions.append('.cu')
 
     # save references to the default compiler_so and _comple methods
-    default_compiler_so = self.compiler_so
-    super = self._compile
+    # default_compiler_so = self.compiler_so
+    super = self.compile
 
     # now redefine the _compile method. This gets executed for each
     # object but distutils doesn't have the ability to change compilers
     # based on source extension: we add it.
-    def _compile(obj, src, ext, cc_args, extra_postargs, pp_opts):
-        if os.path.splitext(src)[1] == '.cu':
+    def compile(sources, output_dir=None, macros=None, include_dirs=None, debug=0, extra_preargs=None, extra_postargs=None, depends=None):
+        postfix = os.path.splitext(sources[0])[1]
+
+        if postfix == '.cu':
             # use the cuda for .cu files
-            self.set_executable('compiler_so', CUDA['nvcc'])
+            #self.set_executable('compiler_so', CUDA['nvcc'])
             # use only a subset of the extra_postargs, which are 1-1 translated
             # from the extra_compile_args in the Extension class
             postargs = extra_postargs['nvcc']
         else:
-            postargs = extra_postargs['gcc']
+            postargs = extra_postargs['cl']
 
-        super(obj, src, ext, cc_args, postargs, pp_opts)
+        return super(sources, output_dir, macros, include_dirs, debug, extra_preargs, postargs, depends)
         # reset the default compiler_so, which we might have changed for cuda
-        self.compiler_so = default_compiler_so
+        #self.rc = default_compiler_so
+
 
     # inject our redefined _compile method into the class
-    self._compile = _compile
+    self.compile = compile
 
 
 # run the customize_compiler
@@ -112,39 +115,25 @@ class custom_build_ext(build_ext):
 ext_modules = [
     Extension(
         "utils.cython_bbox",
-        ["utils/bbox.pyx"],
-        extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
+        ["utils\\bbox.pyx"],
+        #extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
+        extra_compile_args={'cl': []},
         include_dirs = [numpy_include]
     ),
     Extension(
         "nms.cpu_nms",
-        ["nms/cpu_nms.pyx"],
-        extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
+        ["nms\\cpu_nms.pyx"],
+        #extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
+        extra_compile_args={'cl': []},
         include_dirs = [numpy_include]
-    ),
-    Extension('nms.gpu_nms',
-        ['nms/nms_kernel.cu', 'nms/gpu_nms.pyx'],
-        library_dirs=[CUDA['lib64']],
-        libraries=['cudart'],
-        language='c++',
-        runtime_library_dirs=[CUDA['lib64']],
-        # this syntax is specific to this build system
-        # we're only going to use certain compiler args with nvcc and not with
-        # gcc the implementation of this trick is in customize_compiler() below
-        extra_compile_args={'gcc': ["-Wno-unused-function"],
-                            'nvcc': ['-arch=sm_35',
-                                     '--ptxas-options=-v',
-                                     '-c',
-                                     '--compiler-options',
-                                     "'-fPIC'"]},
-        include_dirs = [numpy_include, CUDA['include']]
     ),
     Extension(
         'pycocotools._mask',
-        sources=['pycocotools/maskApi.c', 'pycocotools/_mask.pyx'],
+        sources=['pycocotools\\maskApi.c', 'pycocotools\\_mask.pyx'],
         include_dirs = [numpy_include, 'pycocotools'],
-        extra_compile_args={
-            'gcc': ['-Wno-cpp', '-Wno-unused-function', '-std=c99']},
+        #extra_compile_args={
+        #    'gcc': ['-Wno-cpp', '-Wno-unused-function', '-std=c99']},
+        extra_compile_args={'cl': []},
     ),
 ]
 
